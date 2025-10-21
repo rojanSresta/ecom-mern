@@ -1,6 +1,66 @@
 import Coupon from "../models/coupon.model.js";
 import Order from "../models/order.model.js";
 import { stripe } from "../lib/stripe.js";
+import CryptoJS from "crypto-js";
+import {v4 as uuidv4} from "uuid";
+
+export const esweaCheckout = async (req, res)=>{
+	try {
+		const {products, couponCode} = req.body;
+		
+		const uid = uuidv4();
+
+		if (!Array.isArray(products) || products.length === 0) {
+			return res.status(400).json({ error: "Invalid or empty products array" });
+		}
+
+		let total_amount=0; 
+		let amount = 0;
+		
+		products.forEach((product) => {
+			const subtotal = product.price * product.quantity;
+			amount += subtotal;
+			total_amount += subtotal;
+		});
+		
+		let coupon = null;
+		
+		if (couponCode) {
+			coupon = await Coupon.findOne({ code: couponCode, userId: req.user._id, isActive: true });
+			
+			if (coupon) {
+				total_amount -= Math.round((total_amount * coupon.discountPercentage) / 100);
+			}
+		}
+
+		amount = total_amount;
+
+		total_amount = Number(total_amount).toFixed(2);
+		amount = Number(amount).toFixed(2);
+		
+		const message = `total_amount=${total_amount},transaction_uuid=${uid},product_code=EPAYTEST`;
+		
+		const hash = CryptoJS.HmacSHA256(message, process.env.ESEWASECRET);
+		const hashInBase64 = CryptoJS.enc.Base64.stringify(hash);
+
+		if(total_amount > 2000){
+			await createNewCoupon(req.user._id);
+		}
+
+		res.status(200).json({
+			amount,
+			total_amount,
+			uid,
+			success_url: `${process.env.CLIENT_URL}/purchase-success?session_id=${hashInBase64}`,
+			failure_url: `${process.env.CLIENT_URL}/purchase-cancel`,
+			signature: hashInBase64,
+		});
+
+	} catch (error) {
+		console.log("Error during eswea checkout: ", error);
+		res.status(500).json({message: "Error during esewa checkout", error: error.message});
+	}
+}
 
 export const createCheckoutSession = async (req, res) => {
 	try {
