@@ -24,10 +24,27 @@ const PurchaseSuccessPage = () => {
 			}
 		};
 
+		const handleEsewaPaymentVerification = async ()=>{
+			try {
+				await axios.post("/payments/esewa-payment-verification", {
+					paymentData
+				});
+				clearCart();
+			} catch (error) {
+				console.log(error);
+			}finally{
+				setIsProcessing(false);
+			}
+		}
+
 		const sessionId = new URLSearchParams(window.location.search).get("session_id");
+		const paymentData = new URLSearchParams(window.location.search).get("data");
 		if (sessionId) {
 			handleCheckoutSuccess(sessionId);
-		} else {
+		} else if(paymentData){
+			handleEsewaPaymentVerification(paymentData);
+		} 
+		else {
 			setIsProcessing(false);
 			setError("No session ID found in the URL");
 		}

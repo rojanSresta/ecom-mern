@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useCartStore } from "../stores/useCartStore";
 import { Link } from "react-router-dom";
-import { MoveRight } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
 import { useState } from "react";
+import { MoveRight } from "lucide-react";
 
 const stripePromise = loadStripe(
   "pk_test_51SDQwfBYalDNr4p41ung5kOqlYjBE4WsQTZMl6vAJAtd1YdcZ07HTvB3q7BxlcF8QHsPPItqjorynD1jViGWPmEH00C2O6iZxV"
@@ -31,7 +31,7 @@ const OrderSummary = () => {
       products: cart,
       couponCode: coupon ? coupon.code : null,
     });
-	
+    
     setesewa({ data: res.data, payment: true });
   };
 
