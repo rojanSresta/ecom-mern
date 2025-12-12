@@ -1,6 +1,107 @@
 import Coupon from "../models/coupon.model.js";
 import Order from "../models/order.model.js";
 import { stripe } from "../lib/stripe.js";
+import CryptoJS from "crypto-js";
+import {v4 as uuidv4} from "uuid";
+
+export const esewaCheckout = async (req, res)=>{
+	try {
+		const {products, couponCode} = req.body;
+		
+		const uid = uuidv4();
+
+		if (!Array.isArray(products) || products.length === 0) {
+			return res.status(400).json({ error: "Invalid or empty products array" });
+		}
+
+		let total_amount=0; 
+		let amount = 0;
+		
+		products.forEach((product) => {
+			const subtotal = product.price * product.quantity;
+			amount += subtotal;
+			total_amount += subtotal;
+		});
+		
+		let coupon = null;
+		
+		if (couponCode) {
+			coupon = await Coupon.findOne({ code: couponCode, userId: req.user._id, isActive: true });
+			
+			if (coupon) {
+				total_amount -= Math.round((total_amount * coupon.discountPercentage) / 100);
+			}
+		}
+
+		amount = total_amount;
+
+		total_amount = Number(total_amount).toFixed(2);
+		amount = Number(amount).toFixed(2);
+		
+		const message = `total_amount=${total_amount},transaction_uuid=${uid},product_code=EPAYTEST`;
+		
+		const hash = CryptoJS.HmacSHA256(message, process.env.ESEWASECRET);
+		const hashInBase64 = CryptoJS.enc.Base64.stringify(hash);
+
+		if(total_amount > 2000){
+			await createNewCoupon(req.user._id);
+		}
+
+		res.status(200).json({
+			amount,
+			total_amount,
+			uid,
+			success_url: `${process.env.CLIENT_URL}/purchase-success`,
+			failure_url: `${process.env.CLIENT_URL}/purchase-cancel`,
+			signature: hashInBase64,
+		});
+
+	} catch (error) {
+		console.log("Error during eswea checkout: ", error);
+		res.status(500).json({message: "Error during esewa checkout", error: error.message});
+	}
+}
+
+export const verifyEsewaPayment = async (req, res)=>{
+	try {
+		if (!req.body?.paymentData) {
+			return res.status(400).json({error: "Missing payment data"});
+		}
+
+		const decodedData = Buffer.from(req.body.paymentData, 'base64').toString();
+		const paymentData = JSON.parse(decodedData);
+
+		const {transaction_code, status, signed_field_names,transaction_uuid, total_amount, product_code, signature} = paymentData;
+
+		const message = `transaction_code=${transaction_code},status=${status},total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${product_code},signed_field_names=${signed_field_names}`;
+
+		const hash = CryptoJS.HmacSHA256(message, process.env.ESEWASECRET);
+		const generatedSignature = CryptoJS.enc.Base64.stringify(hash);
+
+		if (signature !== generatedSignature) {
+			res.status(400).json({error: "Invalid Signature"});
+		}
+
+		if(status !== 'COMPLETE'){
+			res.status(200).json({message: `Payment not complete (status: ${status})`});
+		}
+
+		const newOrder = new Order({
+			user: session.metadata.userId,
+			products: products.map((product) => ({
+				product: product.id,
+				quantity: product.quantity,
+				price: product.price,
+			})),
+			totalAmount: session.amount_total / 100,
+		});
+
+		res.status(200).json({message: "Payment Verified Successfully"})
+	} catch (e) {
+		console.error("Error verifying signature:", e);
+		res.status(500).json({ error: "Internal Server Error at verifySignature" });
+	}
+}
 
 export const createCheckoutSession = async (req, res) => {
 	try {
