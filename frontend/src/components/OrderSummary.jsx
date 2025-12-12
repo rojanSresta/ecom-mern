@@ -3,7 +3,7 @@ import { useCartStore } from "../stores/useCartStore";
 import { Link } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MoveRight } from "lucide-react";
 
 const stripePromise = loadStripe(
@@ -20,18 +20,24 @@ const OrderSummary = () => {
   const formattedTotal = total.toFixed(2);
   const formattedSavings = savings.toFixed(2);
 
+  useEffect(() => {
+    if (esewa.payment) {
+      document.getElementById("auto-submit")?.click();
+    }
+  }, [esewa]);
+
   const handlePayment = () => {
     setShowPaymentOptions(true);
   };
 
   const handleEsewaPayment = async () => {
     setShowPaymentOptions(false);
-	
+
     const res = await axios.post("/payments/esewa-checkout", {
       products: cart,
       couponCode: coupon ? coupon.code : null,
     });
-    
+
     setesewa({ data: res.data, payment: true });
   };
 
@@ -101,7 +107,6 @@ const OrderSummary = () => {
         </div>
 
         <div className="relative">
-          {/* Checkout Button */}
           <motion.button
             className="flex w-full items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-300"
             whileHover={{ scale: 1.05 }}
@@ -111,7 +116,6 @@ const OrderSummary = () => {
             Proceed to Checkout
           </motion.button>
 
-          {/* Modal */}
           <AnimatePresence>
             {showPaymentOptions && (
               <motion.div
@@ -160,78 +164,52 @@ const OrderSummary = () => {
             action="https://rc-epay.esewa.com.np/api/epay/main/v2/form"
             method="POST"
           >
-            <input type="hidden" id="amount" name="amount" value={esewa.data.amount} required />
+            <input type="hidden" name="amount" value={esewa.data.amount} />
+
+            <input type="hidden" name="tax_amount" value="0" />
             <input
               type="hidden"
-              id="tax_amount"
-              name="tax_amount"
-              value="0"
-              required
-            />
-            <input
-              type="hidden"
-              id="total_amount"
               name="total_amount"
-              value={(Number(esewa.data.amount) + 0 + 0 + 0).toFixed(2)}
-              required
+              value={esewa.data.total_amount}
             />
+
             <input
               type="hidden"
-              id="transaction_uuid"
               name="transaction_uuid"
               value={esewa.data.uid}
-              required
             />
+
+            <input type="hidden" name="product_code" value="EPAYTEST" />
+
+            <input type="hidden" name="product_service_charge" value="0" />
+            <input type="hidden" name="product_delivery_charge" value="0" />
+
             <input
               type="hidden"
-              id="product_code"
-              name="product_code"
-              value="EPAYTEST"
-              required
-            />
-            <input
-              type="hidden"
-              id="product_service_charge"
-              name="product_service_charge"
-              value="0"
-              required
-            />
-            <input
-              type="hidden"
-              id="product_delivery_charge"
-              name="product_delivery_charge"
-              value="0"
-              required
-            />
-            <input
-              type="hidden"
-              id="success_url"
               name="success_url"
               value={esewa.data.success_url}
-              required
             />
             <input
               type="hidden"
-              id="failure_url"
               name="failure_url"
               value={esewa.data.failure_url}
-              required
             />
+
             <input
               type="hidden"
-              id="signed_field_names"
               name="signed_field_names"
               value="total_amount,transaction_uuid,product_code"
-              required
             />
+
             <input
               type="hidden"
-              id="signature"
               name="signature"
               value={esewa.data.signature}
-              required
             />
-            <input value="Submit" type="submit" />
+
+            <button type="submit" className="hidden" id="auto-submit">
+              Submit
+            </button>
           </form>
         )}
 

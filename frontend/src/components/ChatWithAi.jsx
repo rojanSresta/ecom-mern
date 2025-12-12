@@ -3,7 +3,7 @@ import { Send } from 'lucide-react';
 import { useAiStore } from '../stores/useAiStore.js';
 
 const initialMessage = [        { 
-  text: "Hello! I'm your AI chat assistant. How can I help you today?",
+  text: "Hello! This is AI assistant. It gives data of the website like number of available products",
   sender: 'ai' 
 }];
 
@@ -24,7 +24,7 @@ const ChatWindow = ({ isOpen, onClose }) => {
     setMessages(prev => [...prev, {text: userMessage, sender: 'user'}]);
 
     const aiMessage = await chat(userMessage);
-    setMessages(prev => [...prev, aiMessage])
+    setMessages(prev => [...prev, aiMessage]);
   }
 
   const Message = ({ text, sender, error }) => {
@@ -89,8 +89,6 @@ const ChatWindow = ({ isOpen, onClose }) => {
     </div>
   );
 };
-
-// ... ChatWithAi component remains unchanged ...
 
 const ChatWithAi = () => {
     const [isOpen, setIsOpen] = useState(false);
