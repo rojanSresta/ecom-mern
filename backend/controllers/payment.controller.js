@@ -68,14 +68,11 @@ export const esewaCheckout = async (req, res) => {
 export const verifyEsewaPayment = async (req, res) => {
   try {
 	const encoded = req.body.data;
-	console.log("Encoded data: ", encoded);
 	
 	if(!encoded) return res.status(400).json({ error: "Missing data parameter" });
 
     const jsonString = Buffer.from(encoded, "base64").toString("utf-8");
     const paymentData = JSON.parse(jsonString);
-
-	console.log("Payment data: ", paymentData);
 	
     const {
       transaction_code,
